@@ -6,9 +6,6 @@
 
 > 무료 서버라 한동안 접속이 없으면 잠들어요. 첫 접속은 1~2분 정도 걸릴 수 있습니다.
 
-| 로비 | 대결 시작 | 결과 |
-|---|---|---|
-| ![로비](docs/images/lobby.png) | ![카운트다운](docs/images/countdown.png) | ![결과](docs/images/result.png) |
 
 <br>
 
