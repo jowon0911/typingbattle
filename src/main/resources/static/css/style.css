@@ -365,6 +365,7 @@ input:focus {
     font-family: "JetBrains Mono", Consolas, monospace;
     font-size: 20px;
     font-variant-ligatures: none;
+    white-space: pre-wrap;
     line-height: 1.8;
     color: #4b5567;
     transition: filter 0.3s;
