@@ -7,6 +7,11 @@ public class GameMessage {
     private String type;
     private String nickname;
     private List<String> players;
+    private int progress;
+    private int rank;
+    private long elapsedMs;
+    private int cpm;
+    private int accuracy;
 
     public String getType() {
         return type;
@@ -30,5 +35,11 @@ public class GameMessage {
 
     public void setPlayers(List<String> players) {
         this.players = players;
+    }
+
+    public void setRank(int rank) {
+    }
+
+    public void setElapsedMs(long elapsedMs) {
     }
 }

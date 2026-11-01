@@ -10,21 +10,29 @@
     <h1>방 코드 <span class="room-code" th:text="${room.code}"></span></h1>
     <p id="status" class="hint">서버에 연결하는 중...</p>
 
-    <h3>참가자</h3>
-    <ul id="players"></ul>
+    <div id="players"></div>
 
     <div class="stats">
         <div>언어 <b th:text="${room.snippet.language}"></b></div>
         <div>시간 <b id="time">0.0초</b></div>
         <div>타수 <b id="cpm">0</b></div>
         <div>정확도 <b id="accuracy">100%</b></div>
-        <div>진행률 <b id="progress">0%</b></div>
     </div>
-    <div class="bar"><div id="progress-bar" class="bar-fill"></div></div>
 
     <p id="ime-warning" class="warning" hidden>한글 입력 상태예요. 한/영 키를 눌러 영어로 바꿔 주세요.</p>
 
     <pre id="code" class="code blur" th:text="${room.snippet.content}"></pre>
+
+    <div id="result" class="result" hidden>
+        <h2 id="result-title">결과</h2>
+        <table class="result-table">
+            <thead>
+            <tr><th>순위</th><th>닉네임</th><th>걸린 시간</th><th>타수</th><th>정확도</th></tr>
+            </thead>
+            <tbody id="result-rows"></tbody>
+        </table>
+        <a href="/" class="button">로비로 돌아가기</a>
+    </div>
 
     <div id="countdown" class="countdown" hidden></div>
 </div>
@@ -34,6 +42,9 @@
 <script>
     const roomCode = document.body.dataset.room;
     const myNickname = document.body.dataset.nickname;
+
+    let rows = {};
+    let lastSentProgress = -1;
 
     canType = false;
     setupCode(document.getElementById("code"));
@@ -51,6 +62,12 @@
             if (data.type === "COUNTDOWN") {
                 startCountdown();
             }
+            if (data.type === "PROGRESS" && data.nickname !== myNickname) {
+                setPlayerProgress(data.nickname, data.progress);   // 상대 진행률
+            }
+            if (data.type === "FINISH") {
+                showFinish(data);
+            }
         });
 
         client.publish({
@@ -62,21 +79,54 @@
     client.activate();
 
     function showPlayers(players) {
-        const list = document.getElementById("players");
-        list.innerHTML = "";
+        const box = document.getElementById("players");
+        box.innerHTML = "";
+        rows = {};
+
         for (let i = 0; i < players.length; i++) {
-            const li = document.createElement("li");
-            li.textContent = players[i];
-            if (players[i] === myNickname) {
-                li.textContent += " (나)";
+            const name = players[i];
+
+            const row = document.createElement("div");
+            row.className = "player-row";
+
+            const label = document.createElement("span");
+            label.textContent = name;
+            if (name === myNickname) {
+                label.textContent += " (나)";
             }
-            list.appendChild(li);
+
+            const bar = document.createElement("div");
+            bar.className = "bar";
+            const fill = document.createElement("div");
+            fill.className = "bar-fill";
+            if (name !== myNickname) {
+                fill.classList.add("other");   // 상대 막대는 파란색
+            }
+            bar.appendChild(fill);
+
+            const percent = document.createElement("span");
+            percent.textContent = "0%";
+
+            row.appendChild(label);
+            row.appendChild(bar);
+            row.appendChild(percent);
+            box.appendChild(row);
+
+            rows[name] = { fill: fill, percent: percent };
         }
 
         if (players.length < 2) {
             document.getElementById("status").textContent = "상대를 기다리는 중이에요. 친구에게 방 코드를 알려 주세요!";
         } else {
             document.getElementById("status").textContent = "상대가 들어왔어요! 곧 시작해요.";
+        }
+    }
+
+    function setPlayerProgress(name, progress) {
+        const row = rows[name];
+        if (row) {
+            row.fill.style.width = progress + "%";
+            row.percent.textContent = progress + "%";
         }
     }
 
@@ -101,17 +151,60 @@
         }, 1000);
     }
 
+    function showFinish(data) {
+        const tr = document.createElement("tr");
+        const values = [
+            data.rank + "위",
+            data.nickname,
+            (data.elapsedMs / 1000).toFixed(1) + "초",
+            data.cpm,
+            data.accuracy + "%"
+        ];
+        for (let i = 0; i < values.length; i++) {
+            const td = document.createElement("td");
+            td.textContent = values[i];
+            tr.appendChild(td);
+        }
+        document.getElementById("result-rows").appendChild(tr);
+        document.getElementById("result").hidden = false;
+
+        if (data.rank === 1) {
+            let title;
+            if (data.nickname === myNickname) {
+                title = "승리! 가장 먼저 완성했어요.";
+            } else {
+                title = data.nickname + "님이 먼저 완성했어요!";
+            }
+            document.getElementById("result-title").textContent = title;
+            document.getElementById("status").textContent = title;
+        }
+
+        if (rows[data.nickname]) {
+            rows[data.nickname].percent.textContent = data.rank + "위";
+        }
+    }
+
     function updateScreen() {
         document.getElementById("time").textContent = (getElapsedMs() / 1000).toFixed(1) + "초";
         document.getElementById("cpm").textContent = getCpm();
         document.getElementById("accuracy").textContent = getAccuracy() + "%";
-        document.getElementById("progress").textContent = getProgress() + "%";
-        document.getElementById("progress-bar").style.width = getProgress() + "%";
+        setPlayerProgress(myNickname, getProgress());
+
+        if (getProgress() !== lastSentProgress) {
+            lastSentProgress = getProgress();
+            client.publish({
+                destination: "/app/rooms/" + roomCode + "/progress",
+                body: JSON.stringify({ nickname: myNickname, progress: lastSentProgress })
+            });
+        }
     }
 
     function gameFinished() {
         updateScreen();
-        document.getElementById("status").textContent = "완료! (승패 판정은 4단계에서 만들어요)";
+        client.publish({
+            destination: "/app/rooms/" + roomCode + "/finish",
+            body: JSON.stringify({ nickname: myNickname, cpm: getCpm(), accuracy: getAccuracy() })
+        });
     }
 
     function showImeWarning(show) {

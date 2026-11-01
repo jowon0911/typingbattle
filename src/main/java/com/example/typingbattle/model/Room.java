@@ -13,6 +13,8 @@ public class Room {
     private final Snippet snippet;
     private final List<String> players = new ArrayList<>();
     private boolean started = false;
+    private long startTime = 0;
+    private final List<String> finishedPlayers = new ArrayList<>();
 
     public Room(String code, Snippet snippet) {
         this.code = code;
@@ -35,7 +37,20 @@ public class Room {
             return false;
         }
         started = true;
+        startTime = System.currentTimeMillis() + 3000;
+
         return true;
+    }
+
+    public synchronized int finish(String nickname) {
+        if (!finishedPlayers.contains(nickname)) {
+            finishedPlayers.add(nickname);
+        }
+        return finishedPlayers.indexOf(nickname) + 1;
+    }
+
+    public synchronized long getElapsedMs() {
+        return System.currentTimeMillis() - startTime;
     }
 
     public synchronized boolean isFull() {

@@ -15,7 +15,6 @@ body {
     color: #57606a;
 }
 
-/* 시간, 타수, 정확도, 진행률 */
 .stats {
     display: flex;
     gap: 24px;
@@ -28,7 +27,6 @@ body {
     color: #1f2328;
 }
 
-/* 진행률 막대 */
 .bar {
     height: 10px;
     margin-bottom: 20px;
@@ -139,4 +137,44 @@ button.button {
     font-size: 120px;
     font-weight: bold;
     color: #388bfd;
+}
+
+.player-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.player-row span:first-child {
+    width: 120px;
+}
+
+.player-row .bar {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.player-row span:last-child {
+    width: 50px;
+    text-align: right;
+    font-weight: bold;
+}
+
+/* 상대 진행률 막대는 파란색 */
+.bar-fill.other {
+    background: #388bfd;
+}
+
+.result-table {
+    width: 100%;
+    margin-bottom: 16px;
+    border-collapse: collapse;
+}
+
+.result-table th,
+.result-table td {
+    padding: 8px;
+    text-align: center;
+    border-bottom: 1px solid #d0d7de;
 }
