@@ -11,7 +11,7 @@
 <body>
 <div class="container">
     <header class="hero">
-        <p class="hero-badge">⚡ 1:1 실시간 대결</p>
+        <p class="hero-badge">⚡ 최대 8명 실시간 대결</p>
         <h1 class="logo">코드 타자 배틀<span class="cursor"></span></h1>
         <p class="hint">같은 코드를 누가 먼저 정확하게 치는지 겨뤄 보세요!</p>
     </header>
@@ -22,9 +22,15 @@
         <div class="card">
             <div class="card-icon">🏠</div>
             <h2>방 만들기</h2>
-            <p class="hint">방을 만들고 친구에게 방 코드를 알려 주세요.</p>
+            <p class="hint">방을 만들고 친구들에게 방 코드를 알려 주세요.</p>
             <form action="/rooms" method="post">
                 <input type="text" name="nickname" placeholder="닉네임" maxlength="10" required>
+                <select name="difficulty">
+                    <option value="RANDOM">난이도: 랜덤</option>
+                    <option value="EASY">난이도: 쉬움</option>
+                    <option value="NORMAL">난이도: 보통</option>
+                    <option value="HARD">난이도: 어려움</option>
+                </select>
                 <button type="submit" class="button">방 만들기</button>
             </form>
         </div>

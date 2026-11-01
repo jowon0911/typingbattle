@@ -1,11 +1,12 @@
 package com.example.typingbattle.service;
 
-import com.example.typingbattle.entity.Snippet;
-import com.example.typingbattle.repository.SnippetRepository;
-import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Random;
+
+import org.springframework.stereotype.Service;
+
+import com.example.typingbattle.entity.Snippet;
+import com.example.typingbattle.repository.SnippetRepository;
 
 @Service
 public class SnippetService {
@@ -17,8 +18,11 @@ public class SnippetService {
         this.snippetRepository = snippetRepository;
     }
 
-    public Snippet pickRandom() {
-        List<Snippet> snippets = snippetRepository.findAll();
+    public Snippet pickRandom(String difficulty) {
+        List<Snippet> snippets = snippetRepository.findByDifficulty(difficulty);
+        if (snippets.isEmpty()) {
+            snippets = snippetRepository.findAll();
+        }
         int index = random.nextInt(snippets.size());
         return snippets.get(index);
     }

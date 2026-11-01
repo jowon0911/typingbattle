@@ -15,6 +15,8 @@ public class Snippet {
 
     private String language;
 
+    private String difficulty;
+
     @Column(length = 2000)
     private String content;
 
@@ -24,6 +26,20 @@ public class Snippet {
 
     public String getLanguage() {
         return language;
+    }
+
+    public String getDifficulty() {
+        return difficulty;
+    }
+
+    public String getDifficultyLabel() {
+        if ("EASY".equals(difficulty)) {
+            return "쉬움";
+        }
+        if ("HARD".equals(difficulty)) {
+            return "어려움";
+        }
+        return "보통";
     }
 
     public String getContent() {

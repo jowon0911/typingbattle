@@ -4,6 +4,7 @@ import com.example.typingbattle.service.SnippetService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 public class PracticeController {
@@ -15,8 +16,9 @@ public class PracticeController {
     }
 
     @GetMapping("/practice")
-    public String practice(Model model) {
-        model.addAttribute("snippet", snippetService.pickRandom());
+    public String practice(@RequestParam(defaultValue = "RANDOM") String difficulty, Model model) {
+        model.addAttribute("snippet", snippetService.pickRandom(difficulty));
+        model.addAttribute("difficulty", difficulty);
         return "practice";
     }
 }

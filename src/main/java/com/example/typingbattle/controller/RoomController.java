@@ -26,8 +26,10 @@ public class RoomController {
     }
 
     @PostMapping("/rooms")
-    public String createRoom(@RequestParam String nickname, RedirectAttributes redirectAttributes) {
-        Room room = roomService.createRoom();
+    public String createRoom(@RequestParam String nickname,
+                             @RequestParam(defaultValue = "RANDOM") String difficulty,
+                             RedirectAttributes redirectAttributes) {
+        Room room = roomService.createRoom(difficulty);
         redirectAttributes.addAttribute("nickname", nickname);
         return "redirect:/rooms/" + room.getCode();
     }
@@ -44,15 +46,18 @@ public class RoomController {
             redirectAttributes.addFlashAttribute("error", "방에 같은 닉네임이 있어요. 다른 닉네임을 써 주세요.");
             return "redirect:/";
         }
+        if (room.isStarted()) {
+            redirectAttributes.addFlashAttribute("error", "이미 게임이 시작된 방이에요.");
+            return "redirect:/";
+        }
         if (room.isFull()) {
-            redirectAttributes.addFlashAttribute("error", "방이 꽉 찼어요.");
+            redirectAttributes.addFlashAttribute("error", "방이 꽉 찼어요. (최대 " + Room.MAX_PLAYERS + "명)");
             return "redirect:/";
         }
         redirectAttributes.addAttribute("nickname", nickname);
         return "redirect:/rooms/" + code;
     }
 
-    // 대결 화면
     @GetMapping("/rooms/{code}")
     public String battle(@PathVariable String code, @RequestParam String nickname, Model model) {
         Room room = roomService.findRoom(code);
@@ -61,6 +66,7 @@ public class RoomController {
         }
         model.addAttribute("room", room);
         model.addAttribute("nickname", nickname);
+        model.addAttribute("maxPlayers", Room.MAX_PLAYERS);
         return "battle";
     }
 }

@@ -11,7 +11,6 @@ import com.example.typingbattle.model.Room;
 @Service
 public class RoomService {
 
-
     private final Map<String, Room> rooms = new ConcurrentHashMap<>();
 
     private final SnippetService snippetService;
@@ -21,19 +20,17 @@ public class RoomService {
         this.snippetService = snippetService;
     }
 
-
-    public Room createRoom() {
+    public Room createRoom(String difficulty) {
         String code;
         do {
             code = String.valueOf(1000 + random.nextInt(9000));
         } while (rooms.containsKey(code));
 
-        Room room = new Room(code, snippetService.pickRandom());
+        Room room = new Room(code, snippetService.pickRandom(difficulty));
         rooms.put(code, room);
         return room;
     }
 
-    // 방 코드로 방을 찾는다. 없으면 null
     public Room findRoom(String code) {
         return rooms.get(code);
     }

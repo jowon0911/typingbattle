@@ -7,7 +7,8 @@ import com.example.typingbattle.entity.Snippet;
 
 public class Room {
 
-    public static final int MAX_PLAYERS = 2;
+    public static final int MAX_PLAYERS = 8;
+    public static final int MIN_PLAYERS = 2;
 
     private final String code;
     private final Snippet snippet;
@@ -25,11 +26,15 @@ public class Room {
         if (players.contains(nickname)) {
             return true;
         }
-        if (players.size() >= MAX_PLAYERS) {
+        if (started || players.size() >= MAX_PLAYERS) {
             return false;
         }
         players.add(nickname);
         return true;
+    }
+
+    public synchronized boolean canStart(String nickname) {
+        return !started && isHost(nickname) && players.size() >= MIN_PLAYERS;
     }
 
     public synchronized boolean start() {
@@ -38,7 +43,6 @@ public class Room {
         }
         started = true;
         startTime = System.currentTimeMillis() + 3000;
-
         return true;
     }
 
@@ -53,6 +57,14 @@ public class Room {
         return System.currentTimeMillis() - startTime;
     }
 
+    public synchronized boolean isHost(String nickname) {
+        return !players.isEmpty() && players.get(0).equals(nickname);
+    }
+
+    public synchronized boolean isStarted() {
+        return started;
+    }
+
     public synchronized boolean isFull() {
         return players.size() >= MAX_PLAYERS;
     }
@@ -62,7 +74,7 @@ public class Room {
     }
 
     public synchronized List<String> getPlayers() {
-        return new ArrayList<>(players);   // 복사본을 돌려줘서 밖에서 원본을 못 바꾸게
+        return new ArrayList<>(players);
     }
 
     public String getCode() {

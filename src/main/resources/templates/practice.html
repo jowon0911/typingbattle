@@ -18,6 +18,13 @@
     <a href="/" class="button button-ghost">← 로비로</a>
   </div>
 
+  <div class="tabs">
+    <a href="/practice?difficulty=RANDOM" th:classappend="${difficulty == 'RANDOM'} ? 'active'">랜덤</a>
+    <a href="/practice?difficulty=EASY" th:classappend="${difficulty == 'EASY'} ? 'active'">쉬움</a>
+    <a href="/practice?difficulty=NORMAL" th:classappend="${difficulty == 'NORMAL'} ? 'active'">보통</a>
+    <a href="/practice?difficulty=HARD" th:classappend="${difficulty == 'HARD'} ? 'active'">어려움</a>
+  </div>
+
   <div class="stats">
     <div class="stat"><span>시간</span><b id="time">0.0초</b></div>
     <div class="stat"><span>타수</span><b id="cpm">0</b></div>
@@ -34,6 +41,7 @@
       <span class="dot yellow"></span>
       <span class="dot green"></span>
       <span class="editor-title" th:text="${snippet.language}"></span>
+      <span class="level" th:classappend="${'level-' + snippet.difficulty}" th:text="${snippet.difficultyLabel}"></span>
     </div>
     <pre id="code" class="code" th:text="${snippet.content}"></pre>
   </div>
@@ -42,7 +50,7 @@
     <h2>🎉 완료!</h2>
     <p id="result-text" class="hint"></p>
     <div class="result-buttons">
-      <a href="/practice" class="button">다른 문제 하기</a>
+      <a th:href="@{/practice(difficulty=${difficulty})}" class="button">다른 문제 하기</a>
       <a href="/" class="button button-ghost">로비로</a>
     </div>
   </div>
