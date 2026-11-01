@@ -1,5 +1,3 @@
--- ===== Java =====
-
 INSERT INTO snippet (language, content) VALUES ('Java',
                                                 'for (int i = 1; i <= 10; i++) {
                                                     if (i % 2 == 0) {
@@ -153,7 +151,6 @@ INSERT INTO snippet (language, content) VALUES ('Java',
                                                     }
                                                 }');
 
--- ===== Spring =====
 
 INSERT INTO snippet (language, content) VALUES ('Spring',
                                                 '@GetMapping("/hello")
@@ -185,7 +182,6 @@ INSERT INTO snippet (language, content) VALUES ('Spring',
                                                     boolean existsByEmail(String email);
                                                 }');
 
--- ===== Python =====
 
 INSERT INTO snippet (language, content) VALUES ('Python',
                                                 'numbers = [3, 1, 4, 1, 5]
@@ -210,7 +206,6 @@ INSERT INTO snippet (language, content) VALUES ('Python',
                                                     else:
                                                         print(name, "B")');
 
--- ===== JavaScript =====
 
 INSERT INTO snippet (language, content) VALUES ('JavaScript',
                                                 'const button = document.getElementById("start");
@@ -232,7 +227,6 @@ INSERT INTO snippet (language, content) VALUES ('JavaScript',
                                                 const result = add(2, 3);
                                                 console.log("result = " + result);');
 
--- ===== SQL =====
 
 INSERT INTO snippet (language, content) VALUES ('SQL',
                                                 'SELECT name, score

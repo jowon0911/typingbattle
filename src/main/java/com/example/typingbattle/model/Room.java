@@ -1,0 +1,60 @@
+package com.example.typingbattle.model;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.example.typingbattle.entity.Snippet;
+
+public class Room {
+
+    public static final int MAX_PLAYERS = 2;
+
+    private final String code;
+    private final Snippet snippet;
+    private final List<String> players = new ArrayList<>();
+    private boolean started = false;
+
+    public Room(String code, Snippet snippet) {
+        this.code = code;
+        this.snippet = snippet;
+    }
+
+    public synchronized boolean addPlayer(String nickname) {
+        if (players.contains(nickname)) {
+            return true;
+        }
+        if (players.size() >= MAX_PLAYERS) {
+            return false;
+        }
+        players.add(nickname);
+        return true;
+    }
+
+    public synchronized boolean start() {
+        if (started) {
+            return false;
+        }
+        started = true;
+        return true;
+    }
+
+    public synchronized boolean isFull() {
+        return players.size() >= MAX_PLAYERS;
+    }
+
+    public synchronized boolean hasPlayer(String nickname) {
+        return players.contains(nickname);
+    }
+
+    public synchronized List<String> getPlayers() {
+        return new ArrayList<>(players);   // 복사본을 돌려줘서 밖에서 원본을 못 바꾸게
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public Snippet getSnippet() {
+        return snippet;
+    }
+}

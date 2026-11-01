@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>코드 타자 배틀</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>코드 타자 배틀</h1>
+    <p class="hint">같은 코드를 누가 먼저 정확하게 치는지 겨뤄 보세요!</p>
+
+    <p class="warning" th:if="${error}" th:text="${error}"></p>
+
+    <div class="card">
+        <h2>방 만들기</h2>
+        <form action="/rooms" method="post">
+            <input type="text" name="nickname" placeholder="닉네임" maxlength="10" required>
+            <button type="submit" class="button">방 만들기</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>방 입장</h2>
+        <form action="/rooms/join" method="get">
+            <input type="text" name="nickname" placeholder="닉네임" maxlength="10" required>
+            <input type="text" name="code" placeholder="방 코드 4자리" maxlength="4" required>
+            <button type="submit" class="button">입장</button>
+        </form>
+    </div>
+
+    <p><a href="/practice">혼자 연습하기</a></p>
+</div>
+</body>
+</html>

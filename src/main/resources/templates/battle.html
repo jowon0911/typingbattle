@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>코드 타자 배틀</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body th:data-room="${room.code}" th:data-nickname="${nickname}">
+<div class="container">
+    <h1>방 코드 <span class="room-code" th:text="${room.code}"></span></h1>
+    <p id="status" class="hint">서버에 연결하는 중...</p>
+
+    <h3>참가자</h3>
+    <ul id="players"></ul>
+
+    <div class="stats">
+        <div>언어 <b th:text="${room.snippet.language}"></b></div>
+        <div>시간 <b id="time">0.0초</b></div>
+        <div>타수 <b id="cpm">0</b></div>
+        <div>정확도 <b id="accuracy">100%</b></div>
+        <div>진행률 <b id="progress">0%</b></div>
+    </div>
+    <div class="bar"><div id="progress-bar" class="bar-fill"></div></div>
+
+    <p id="ime-warning" class="warning" hidden>한글 입력 상태예요. 한/영 키를 눌러 영어로 바꿔 주세요.</p>
+
+    <pre id="code" class="code blur" th:text="${room.snippet.content}"></pre>
+
+    <div id="countdown" class="countdown" hidden></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.2.1/bundles/stomp.umd.min.js"></script>
+<script src="/js/typing.js"></script>
+<script>
+    const roomCode = document.body.dataset.room;
+    const myNickname = document.body.dataset.nickname;
+
+    canType = false;
+    setupCode(document.getElementById("code"));
+
+    const client = new StompJs.Client({
+        brokerURL: (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws"
+    });
+
+    client.onConnect = function () {
+        client.subscribe("/topic/rooms/" + roomCode, function (message) {
+            const data = JSON.parse(message.body);
+            if (data.type === "PLAYERS") {
+                showPlayers(data.players);
+            }
+            if (data.type === "COUNTDOWN") {
+                startCountdown();
+            }
+        });
+
+        client.publish({
+            destination: "/app/rooms/" + roomCode + "/join",
+            body: JSON.stringify({ nickname: myNickname })
+        });
+    };
+
+    client.activate();
+
+    function showPlayers(players) {
+        const list = document.getElementById("players");
+        list.innerHTML = "";
+        for (let i = 0; i < players.length; i++) {
+            const li = document.createElement("li");
+            li.textContent = players[i];
+            if (players[i] === myNickname) {
+                li.textContent += " (나)";
+            }
+            list.appendChild(li);
+        }
+
+        if (players.length < 2) {
+            document.getElementById("status").textContent = "상대를 기다리는 중이에요. 친구에게 방 코드를 알려 주세요!";
+        } else {
+            document.getElementById("status").textContent = "상대가 들어왔어요! 곧 시작해요.";
+        }
+    }
+
+    function startCountdown() {
+        const countdown = document.getElementById("countdown");
+        let count = 3;
+        countdown.textContent = count;
+        countdown.hidden = false;
+
+        const countdownTimer = setInterval(function () {
+            count--;
+            if (count > 0) {
+                countdown.textContent = count;
+            } else {
+                clearInterval(countdownTimer);
+                countdown.hidden = true;
+                document.getElementById("code").classList.remove("blur");
+                document.getElementById("status").textContent = "시작! 코드를 입력하세요.";
+                canType = true;
+                startTime = Date.now();
+            }
+        }, 1000);
+    }
+
+    function updateScreen() {
+        document.getElementById("time").textContent = (getElapsedMs() / 1000).toFixed(1) + "초";
+        document.getElementById("cpm").textContent = getCpm();
+        document.getElementById("accuracy").textContent = getAccuracy() + "%";
+        document.getElementById("progress").textContent = getProgress() + "%";
+        document.getElementById("progress-bar").style.width = getProgress() + "%";
+    }
+
+    function gameFinished() {
+        updateScreen();
+        document.getElementById("status").textContent = "완료! (승패 판정은 4단계에서 만들어요)";
+    }
+
+    function showImeWarning(show) {
+        document.getElementById("ime-warning").hidden = !show;
+    }
+
+    setInterval(function () {
+        if (startTime !== 0 && endTime === 0) {
+            updateScreen();
+        }
+    }, 100);
+</script>
+</body>
+</html>

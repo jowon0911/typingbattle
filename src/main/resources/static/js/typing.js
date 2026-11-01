@@ -6,6 +6,7 @@ let errorCount = 0;
 let hasError = false;
 let startTime = 0;
 let endTime = 0;
+let canType = true;
 
 
 function setupCode(codeElement) {
@@ -31,10 +32,12 @@ function setupCode(codeElement) {
 
 // 키보드를 누를 때마다 실행된다
 document.addEventListener("keydown", function (event) {
+    if (!canType) return;
     if (endTime !== 0) return;
     if (event.ctrlKey || event.altKey) return;
 
     if (event.key === "Process") {
+        showImeWarning(true);
         return;
     }
     showImeWarning(false);

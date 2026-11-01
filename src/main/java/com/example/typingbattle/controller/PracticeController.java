@@ -14,11 +14,6 @@ public class PracticeController {
         this.snippetService = snippetService;
     }
 
-    @GetMapping("/")
-    public String home() {
-        return "redirect:/practice";
-    }
-
     @GetMapping("/practice")
     public String practice(Model model) {
         model.addAttribute("snippet", snippetService.pickRandom());
