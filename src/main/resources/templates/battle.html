@@ -2,26 +2,44 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>코드 타자 배틀</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>대결 - 코드 타자 배틀</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body th:data-room="${room.code}" th:data-nickname="${nickname}">
 <div class="container">
-    <h1>방 코드 <span class="room-code" th:text="${room.code}"></span></h1>
-    <p id="status" class="hint">서버에 연결하는 중...</p>
+    <div class="page-header">
+        <div>
+            <p class="label">방 코드</p>
+            <div class="room-code" th:text="${room.code}"></div>
+        </div>
+        <p id="status" class="status">서버에 연결하는 중...</p>
+    </div>
 
-    <div id="players"></div>
+    <div class="card">
+        <h3 class="card-title">참가자</h3>
+        <div id="players"></div>
+    </div>
 
     <div class="stats">
-        <div>언어 <b th:text="${room.snippet.language}"></b></div>
-        <div>시간 <b id="time">0.0초</b></div>
-        <div>타수 <b id="cpm">0</b></div>
-        <div>정확도 <b id="accuracy">100%</b></div>
+        <div class="stat"><span>시간</span><b id="time">0.0초</b></div>
+        <div class="stat"><span>타수</span><b id="cpm">0</b></div>
+        <div class="stat"><span>정확도</span><b id="accuracy">100%</b></div>
     </div>
 
     <p id="ime-warning" class="warning" hidden>한글 입력 상태예요. 한/영 키를 눌러 영어로 바꿔 주세요.</p>
 
-    <pre id="code" class="code blur" th:text="${room.snippet.content}"></pre>
+    <div class="editor">
+        <div class="editor-header">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+            <span class="editor-title" th:text="${room.snippet.language}"></span>
+        </div>
+        <pre id="code" class="code blur" th:text="${room.snippet.content}"></pre>
+    </div>
 
     <div id="result" class="result" hidden>
         <h2 id="result-title">결과</h2>
@@ -31,7 +49,9 @@
             </thead>
             <tbody id="result-rows"></tbody>
         </table>
-        <a href="/" class="button">로비로 돌아가기</a>
+        <div class="result-buttons">
+            <a href="/" class="button">로비로 돌아가기</a>
+        </div>
     </div>
 
     <div id="countdown" class="countdown" hidden></div>

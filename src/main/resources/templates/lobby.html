@@ -2,34 +2,50 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>코드 타자 배틀</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 <div class="container">
-    <h1>코드 타자 배틀</h1>
-    <p class="hint">같은 코드를 누가 먼저 정확하게 치는지 겨뤄 보세요!</p>
+    <header class="hero">
+        <p class="hero-badge">⚡ 1:1 실시간 대결</p>
+        <h1 class="logo">코드 타자 배틀<span class="cursor"></span></h1>
+        <p class="hint">같은 코드를 누가 먼저 정확하게 치는지 겨뤄 보세요!</p>
+    </header>
 
     <p class="warning" th:if="${error}" th:text="${error}"></p>
 
-    <div class="card">
-        <h2>방 만들기</h2>
-        <form action="/rooms" method="post">
-            <input type="text" name="nickname" placeholder="닉네임" maxlength="10" required>
-            <button type="submit" class="button">방 만들기</button>
-        </form>
+    <div class="lobby-grid">
+        <div class="card">
+            <div class="card-icon">🏠</div>
+            <h2>방 만들기</h2>
+            <p class="hint">방을 만들고 친구에게 방 코드를 알려 주세요.</p>
+            <form action="/rooms" method="post">
+                <input type="text" name="nickname" placeholder="닉네임" maxlength="10" required>
+                <button type="submit" class="button">방 만들기</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="card-icon">🔑</div>
+            <h2>방 입장</h2>
+            <p class="hint">친구에게 받은 4자리 방 코드를 입력하세요.</p>
+            <form action="/rooms/join" method="get">
+                <input type="text" name="nickname" placeholder="닉네임" maxlength="10" required>
+                <input type="text" name="code" placeholder="방 코드 4자리" maxlength="4" required>
+                <button type="submit" class="button button-blue">입장하기</button>
+            </form>
+        </div>
     </div>
 
-    <div class="card">
-        <h2>방 입장</h2>
-        <form action="/rooms/join" method="get">
-            <input type="text" name="nickname" placeholder="닉네임" maxlength="10" required>
-            <input type="text" name="code" placeholder="방 코드 4자리" maxlength="4" required>
-            <button type="submit" class="button">입장</button>
-        </form>
+    <div class="lobby-links">
+        <a href="/practice" class="button button-ghost">⌨️ 혼자 연습하기</a>
     </div>
 
-    <p><a href="/practice">혼자 연습하기</a></p>
+    <p class="footer">Spring Boot · WebSocket · Render</p>
 </div>
 </body>
 </html>
