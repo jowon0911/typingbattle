@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>코드 타자 연습</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="container">
+  <h1>코드 타자 연습</h1>
+  <p class="hint">화면의 코드를 그대로 입력하세요. 첫 글자를 치는 순간 시간이 시작돼요.</p>
+
+  <div class="stats">
+    <div>언어 <b th:text="${snippet.language}"></b></div>
+    <div>시간 <b id="time">0.0초</b></div>
+    <div>타수 <b id="cpm">0</b></div>
+    <div>정확도 <b id="accuracy">100%</b></div>
+    <div>진행률 <b id="progress">0%</b></div>
+  </div>
+  <div class="bar"><div id="progress-bar" class="bar-fill"></div></div>
+
+  <p id="ime-warning" class="warning" hidden>한글 입력 상태예요. 한/영 키를 눌러 영어로 바꿔 주세요.</p>
+
+  <pre id="code" class="code" th:text="${snippet.content}"></pre>
+
+  <div id="result" class="result" hidden>
+    <h2>완료!</h2>
+    <p id="result-text"></p>
+    <a href="/practice" class="button">다른 문제 하기</a>
+  </div>
+</div>
+
+<script src="/js/typing.js"></script>
+<script>
+  setupCode(document.getElementById("code"));
+
+  function updateScreen() {
+    document.getElementById("time").textContent = (getElapsedMs() / 1000).toFixed(1) + "초";
+    document.getElementById("cpm").textContent = getCpm();
+    document.getElementById("accuracy").textContent = getAccuracy() + "%";
+    document.getElementById("progress").textContent = getProgress() + "%";
+    document.getElementById("progress-bar").style.width = getProgress() + "%";
+  }
+
+  function gameFinished() {
+    updateScreen();
+    document.getElementById("result-text").textContent =
+            "걸린 시간 " + (getElapsedMs() / 1000).toFixed(1) + "초, " +
+            "타수 " + getCpm() + ", 정확도 " + getAccuracy() + "%, 오타 " + errorCount + "번";
+    document.getElementById("result").hidden = false;
+  }
+
+  function showImeWarning(show) {
+    document.getElementById("ime-warning").hidden = !show;
+  }
+
+  setInterval(function () {
+    if (startTime !== 0 && endTime === 0) {
+      updateScreen();
+    }
+  }, 100);
+</script>
+</body>
+</html>
