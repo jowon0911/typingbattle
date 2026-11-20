@@ -26,7 +26,7 @@
             <input type="text" name="nickname" class="nickname" placeholder="닉네임" maxlength="10" required>
             <div class="match-buttons">
                 <button type="submit" name="mode" value="NORMAL" class="button">
-                    일반전<small>점수 변화 없이 가볍게</small>
+                    일반전<small>점수 변화 없이 가볍게 · AI 대결 가능</small>
                 </button>
                 <button type="submit" name="mode" value="RANKED" class="button button-amber">
                     경쟁전<small>순위에 따라 점수가 오르내려요</small>
@@ -39,7 +39,7 @@
         <div class="card">
             <div class="card-icon">🏠</div>
             <h2>친구 방 만들기</h2>
-            <p class="hint">방을 만들고 친구들에게 방 코드를 알려 주세요. (일반전)</p>
+            <p class="hint">방을 만들고 친구들에게 방 코드를 알려 주세요. 혼자라면 🤖 AI를 추가해서 대결할 수 있어요. (일반전)</p>
             <form action="/rooms" method="post">
                 <input type="text" name="nickname" class="nickname" placeholder="닉네임" maxlength="10" required>
                 <select name="difficulty">

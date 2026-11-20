@@ -23,4 +23,9 @@ public class GameScheduler {
         matchService.makeMatches("RANKED");
         gameService.checkRooms();
     }
+
+    @Scheduled(fixedRate = 300)
+    public void moveBots() {
+        gameService.updateBots();
+    }
 }

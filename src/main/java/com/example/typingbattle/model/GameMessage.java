@@ -8,6 +8,8 @@ public class GameMessage {
     private String nickname;
     private List<String> players;
     private List<String> left;
+    private List<String> bots;
+    private String level;
     private String host;
     private String target;
     private String mode;
@@ -52,6 +54,22 @@ public class GameMessage {
 
     public void setLeft(List<String> left) {
         this.left = left;
+    }
+
+    public List<String> getBots() {
+        return bots;
+    }
+
+    public void setBots(List<String> bots) {
+        this.bots = bots;
+    }
+
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
     }
 
     public String getHost() {

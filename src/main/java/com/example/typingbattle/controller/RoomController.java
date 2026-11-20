@@ -44,6 +44,21 @@ public class RoomController {
         return "redirect:/rooms/" + room.getCode();
     }
 
+    @GetMapping("/rooms/ai")
+    public String playWithAi(@RequestParam String nickname,
+                             @RequestParam(defaultValue = "NORMAL") String level,
+                             RedirectAttributes redirectAttributes) {
+        nickname = nickname.trim();
+        if (!MatchService.isValidNickname(nickname)) {
+            redirectAttributes.addFlashAttribute("error", "닉네임은 1~10글자로 입력해 주세요.");
+            return "redirect:/";
+        }
+        Room room = roomService.createRoom("RANDOM", "NORMAL", false);
+        room.addBot(level);
+        redirectAttributes.addAttribute("nickname", nickname);
+        return "redirect:/rooms/" + room.getCode();
+    }
+
     @GetMapping("/rooms/join")
     public String joinRoom(@RequestParam String code, @RequestParam String nickname,
                            RedirectAttributes redirectAttributes) {

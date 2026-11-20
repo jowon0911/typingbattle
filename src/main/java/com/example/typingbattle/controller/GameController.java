@@ -34,6 +34,18 @@ public class GameController {
         gameService.changeHost(code, headerAccessor.getSessionId(), message.getTarget());
     }
 
+    @MessageMapping("/rooms/{code}/bot/add")
+    public void addBot(@DestinationVariable String code, GameMessage message,
+                       SimpMessageHeaderAccessor headerAccessor) {
+        gameService.addBot(code, headerAccessor.getSessionId(), message.getLevel());
+    }
+
+    @MessageMapping("/rooms/{code}/bot/remove")
+    public void removeBot(@DestinationVariable String code, GameMessage message,
+                          SimpMessageHeaderAccessor headerAccessor) {
+        gameService.removeBot(code, headerAccessor.getSessionId(), message.getTarget());
+    }
+
     @MessageMapping("/rooms/{code}/progress")
     public void progress(@DestinationVariable String code, GameMessage message,
                          SimpMessageHeaderAccessor headerAccessor) {

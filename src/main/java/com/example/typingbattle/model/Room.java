@@ -2,6 +2,7 @@ package com.example.typingbattle.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import com.example.typingbattle.entity.Snippet;
 
@@ -21,7 +22,9 @@ public class Room {
     private final List<String> players = new ArrayList<>();
     private final List<String> reserved = new ArrayList<>();
     private final List<String> leftPlayers = new ArrayList<>();
+    private final List<Bot> bots = new ArrayList<>();
     private final List<PlayerResult> results = new ArrayList<>();
+    private final Random random = new Random();
     private boolean started = false;
     private boolean ended = false;
     private long startTime = 0;
@@ -39,7 +42,7 @@ public class Room {
 
     public synchronized boolean addPlayer(String nickname) {
         if (players.contains(nickname)) {
-            return !leftPlayers.contains(nickname);
+            return !leftPlayers.contains(nickname) && !isBot(nickname);
         }
         if (started || players.size() >= MAX_PLAYERS) {
             return false;
@@ -47,7 +50,63 @@ public class Room {
         if (matched && !reserved.contains(nickname)) {
             return false;
         }
-        players.add(nickname);
+        if (getHost() == null) {
+            players.add(0, nickname);
+        } else {
+            players.add(nickname);
+        }
+        return true;
+    }
+
+    public synchronized Bot addBot(String level) {
+        if (started || matched || isRanked() || players.size() >= MAX_PLAYERS) {
+            return null;
+        }
+
+        int baseCpm;
+        int accuracy;
+        String label;
+        if ("EASY".equals(level)) {
+            baseCpm = 150;
+            accuracy = 90;
+            label = "쉬움";
+        } else if ("HARD".equals(level)) {
+            baseCpm = 400;
+            accuracy = 98;
+            label = "어려움";
+        } else {
+            level = "NORMAL";
+            baseCpm = 250;
+            accuracy = 95;
+            label = "보통";
+        }
+        int cpm = baseCpm - baseCpm / 10 + random.nextInt(baseCpm / 5 + 1);
+
+        String name = "🤖AI(" + label + ")";
+        String botName = name;
+        int number = 2;
+        while (players.contains(botName)) {
+            botName = name + number;
+            number++;
+        }
+
+        Bot bot = new Bot(botName, level, cpm, accuracy);
+        bots.add(bot);
+        players.add(botName);
+        return bot;
+    }
+
+    public synchronized boolean removeBot(String botName) {
+        if (started || !isBot(botName)) {
+            return false;
+        }
+        players.remove(botName);
+        for (int i = 0; i < bots.size(); i++) {
+            if (bots.get(i).getName().equals(botName)) {
+                bots.remove(i);
+                break;
+            }
+        }
         return true;
     }
 
@@ -68,7 +127,7 @@ public class Room {
         if (started || matched || !isHost(nickname)) {
             return false;
         }
-        if (target == null || target.equals(nickname) || !players.contains(target)) {
+        if (target == null || target.equals(nickname) || !players.contains(target) || isBot(target)) {
             return false;
         }
         players.remove(target);
@@ -90,7 +149,7 @@ public class Room {
     }
 
     public synchronized PlayerResult finish(String nickname, int cpm, int accuracy) {
-        if (!started || ended || !isActivePlayer(nickname) || hasFinished(nickname)) {
+        if (!started || ended || !isActivePlayer(nickname) || isFinished(nickname)) {
             return null;
         }
         long elapsedMs = getElapsedMs();
@@ -113,7 +172,7 @@ public class Room {
             return false;
         }
         for (String player : players) {
-            if (!leftPlayers.contains(player) && !hasFinished(player)) {
+            if (!leftPlayers.contains(player) && !isFinished(player)) {
                 return false;
             }
         }
@@ -131,7 +190,7 @@ public class Room {
         ended = true;
         List<PlayerResult> finalResults = new ArrayList<>(results);
         for (String player : players) {
-            if (!hasFinished(player)) {
+            if (!isFinished(player)) {
                 PlayerResult result = new PlayerResult();
                 result.setRank(players.size());
                 result.setNickname(player);
@@ -143,9 +202,18 @@ public class Room {
         return finalResults;
     }
 
-    private boolean hasFinished(String nickname) {
+    public synchronized boolean isFinished(String nickname) {
         for (PlayerResult result : results) {
             if (result.getNickname().equals(nickname)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public synchronized boolean isBot(String nickname) {
+        for (Bot bot : bots) {
+            if (bot.getName().equals(nickname)) {
                 return true;
             }
         }
@@ -156,8 +224,13 @@ public class Room {
         return players.contains(nickname) && !leftPlayers.contains(nickname);
     }
 
-    public synchronized boolean hasConnectedPlayer() {
-        return players.size() > leftPlayers.size();
+    public synchronized boolean hasConnectedHuman() {
+        for (String player : players) {
+            if (!leftPlayers.contains(player) && !isBot(player)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public synchronized boolean isAllReservedJoined() {
@@ -177,14 +250,16 @@ public class Room {
     }
 
     public synchronized boolean isHost(String nickname) {
-        return !players.isEmpty() && players.get(0).equals(nickname);
+        return nickname != null && nickname.equals(getHost());
     }
 
     public synchronized String getHost() {
-        if (players.isEmpty()) {
-            return null;
+        for (String player : players) {
+            if (!isBot(player)) {
+                return player;
+            }
         }
-        return players.get(0);
+        return null;
     }
 
     public synchronized boolean isStarted() {
@@ -209,6 +284,18 @@ public class Room {
 
     public synchronized List<String> getLeftPlayers() {
         return new ArrayList<>(leftPlayers);
+    }
+
+    public synchronized List<Bot> getBots() {
+        return new ArrayList<>(bots);
+    }
+
+    public synchronized List<String> getBotNames() {
+        List<String> names = new ArrayList<>();
+        for (Bot bot : bots) {
+            names.add(bot.getName());
+        }
+        return names;
     }
 
     public String getCode() {

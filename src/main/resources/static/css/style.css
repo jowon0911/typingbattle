@@ -460,6 +460,26 @@ select:focus {
     min-width: 200px;
 }
 
+.ai-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.ai-controls select {
+    width: auto;
+    padding: 10px 12px;
+    font-size: 14px;
+}
+
+.ai-controls .button {
+    min-width: 0;
+    padding: 10px 16px;
+    font-size: 14px;
+}
+
 .start-area .hint {
     margin: 10px 0 0;
     font-size: 13px;

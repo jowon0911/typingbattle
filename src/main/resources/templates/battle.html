@@ -9,7 +9,8 @@
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body th:data-room="${room.code}" th:data-nickname="${nickname}" th:data-mode="${room.mode}"
-      th:data-matched="${room.matched}" th:data-ranked="${room.ranked}" th:data-limit="${timeLimitSec}">
+      th:data-matched="${room.matched}" th:data-ranked="${room.ranked}" th:data-limit="${timeLimitSec}"
+      th:data-max="${maxPlayers}">
 <div class="container">
     <div class="page-header">
         <div>
@@ -24,8 +25,16 @@
         <h3 class="card-title">참가자 <span id="player-count">0</span> / <span th:text="${maxPlayers}"></span></h3>
         <div id="players"></div>
         <div id="start-area" class="start-area" hidden>
+            <div class="ai-controls">
+                <select id="ai-level">
+                    <option value="EASY">AI 쉬움 (약 150타)</option>
+                    <option value="NORMAL" selected>AI 보통 (약 250타)</option>
+                    <option value="HARD">AI 어려움 (약 400타)</option>
+                </select>
+                <button id="ai-button" class="button button-ghost">🤖 AI 추가</button>
+            </div>
             <button id="start-button" class="button" disabled>게임 시작</button>
-            <p class="hint">2명 이상 모이면 시작할 수 있어요. 다른 사람 옆의 [방장 넘기기]로 방장을 바꿀 수 있어요.</p>
+            <p class="hint">AI를 포함해 2명 이상 모이면 시작할 수 있어요. 다른 사람 옆의 [방장 넘기기]로 방장을 바꿀 수 있어요.</p>
         </div>
         <ul id="notices" class="notice-list" hidden></ul>
     </div>
@@ -150,9 +159,17 @@
         });
     });
 
+    document.getElementById("ai-button").addEventListener("click", function () {
+        client.publish({
+            destination: "/app/rooms/" + roomCode + "/bot/add",
+            body: JSON.stringify({ level: document.getElementById("ai-level").value })
+        });
+    });
+
     function showPlayers(data) {
         const players = data.players;
         const left = data.left || [];
+        const bots = data.bots || [];
         const isHost = data.host === myNickname;
         const box = document.getElementById("players");
         box.innerHTML = "";
@@ -195,16 +212,17 @@
             row.appendChild(percent);
 
             if (!matched && !gameStarted && isHost && name !== myNickname) {
-                const hostButton = document.createElement("button");
-                hostButton.className = "button button-ghost button-small";
-                hostButton.textContent = "방장 넘기기";
-                hostButton.addEventListener("click", function () {
+                const isBot = bots.includes(name);
+                const rowButton = document.createElement("button");
+                rowButton.className = "button button-ghost button-small";
+                rowButton.textContent = isBot ? "AI 빼기" : "방장 넘기기";
+                rowButton.addEventListener("click", function () {
                     client.publish({
-                        destination: "/app/rooms/" + roomCode + "/host",
+                        destination: "/app/rooms/" + roomCode + (isBot ? "/bot/remove" : "/host"),
                         body: JSON.stringify({ target: name })
                     });
                 });
-                row.appendChild(hostButton);
+                row.appendChild(rowButton);
             }
 
             box.appendChild(row);
@@ -226,9 +244,10 @@
 
         document.getElementById("start-area").hidden = !isHost;
         document.getElementById("start-button").disabled = players.length < 2;
+        document.getElementById("ai-button").disabled = players.length >= Number(document.body.dataset.max);
 
         if (players.length < 2) {
-            setStatus("친구를 기다리는 중이에요. 방 코드를 알려 주세요!");
+            setStatus("친구를 기다리거나 🤖 AI를 추가해 보세요!");
         } else if (isHost) {
             setStatus("모두 모였으면 [게임 시작]을 눌러 주세요!");
         } else {

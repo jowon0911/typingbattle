@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import com.example.typingbattle.model.Bot;
 import com.example.typingbattle.model.GameMessage;
 import com.example.typingbattle.model.PlayerResult;
 import com.example.typingbattle.model.Room;
@@ -107,20 +108,85 @@ public class GameService {
             if (result == null) {
                 return;
             }
-
-            GameMessage message = new GameMessage();
-            message.setType("FINISH");
-            message.setNickname(result.getNickname());
-            message.setRank(result.getRank());
-            message.setElapsedMs(result.getElapsedMs());
-            message.setCpm(result.getCpm());
-            message.setAccuracy(result.getAccuracy());
-            send(room, message);
+            sendFinish(room, result);
 
             if (room.isAllDone()) {
                 endGame(room);
             }
         }
+    }
+
+    public void addBot(String code, String sessionId, String level) {
+        Room room = findMyRoom(code, sessionId);
+        if (room == null) {
+            return;
+        }
+
+        synchronized (room) {
+            if (!room.isHost(sessionNicknames.get(sessionId))) {
+                return;
+            }
+            Bot bot = room.addBot(level);
+            if (bot != null) {
+                sendPlayers(room);
+                notice(room, bot.getName() + "가 들어왔어요. (약 " + bot.getCpm() + "타)");
+            }
+        }
+    }
+
+    public void removeBot(String code, String sessionId, String botName) {
+        Room room = findMyRoom(code, sessionId);
+        if (room == null) {
+            return;
+        }
+
+        synchronized (room) {
+            if (room.isHost(sessionNicknames.get(sessionId)) && room.removeBot(botName)) {
+                sendPlayers(room);
+                notice(room, botName + "를 뺐어요.");
+            }
+        }
+    }
+
+    public void updateBots() {
+        for (Room room : roomService.getRooms()) {
+            synchronized (room) {
+                if (!room.isStarted() || room.isEnded()) {
+                    continue;
+                }
+                for (Bot bot : room.getBots()) {
+                    moveBot(room, bot);
+                }
+                if (room.isAllDone()) {
+                    endGame(room);
+                }
+            }
+        }
+    }
+
+    private void moveBot(Room room, Bot bot) {
+        if (room.isFinished(bot.getName())) {
+            return;
+        }
+        int progress = bot.getProgress(room.getElapsedMs(), room.getSnippet().getContent().length());
+        if (progress == bot.getLastProgress()) {
+            return;
+        }
+        bot.setLastProgress(progress);
+
+        if (progress >= 100) {
+            PlayerResult result = room.finish(bot.getName(), bot.getCpm(), bot.getAccuracy());
+            if (result != null) {
+                sendFinish(room, result);
+            }
+            return;
+        }
+
+        GameMessage message = new GameMessage();
+        message.setType("PROGRESS");
+        message.setNickname(bot.getName());
+        message.setProgress(progress);
+        send(room, message);
     }
 
     public void leave(String sessionId) {
@@ -138,7 +204,7 @@ public class GameService {
             String oldHost = room.getHost();
             room.leave(nickname);
 
-            if (!room.hasConnectedPlayer()) {
+            if (!room.hasConnectedHuman()) {
                 roomService.removeRoom(code);
                 return;
             }
@@ -170,7 +236,7 @@ public class GameService {
                     endGame(room);
                 } else if (room.isMatched() && !room.isStarted()) {
                     checkMatchedRoom(room);
-                } else if (!room.isStarted() && room.getPlayers().isEmpty()
+                } else if (!room.isStarted() && !room.hasConnectedHuman()
                         && room.getWaitingMs() > EMPTY_ROOM_MS) {
                     roomService.removeRoom(room.getCode());
                 }
@@ -221,11 +287,23 @@ public class GameService {
         send(room, message);
     }
 
+    private void sendFinish(Room room, PlayerResult result) {
+        GameMessage message = new GameMessage();
+        message.setType("FINISH");
+        message.setNickname(result.getNickname());
+        message.setRank(result.getRank());
+        message.setElapsedMs(result.getElapsedMs());
+        message.setCpm(result.getCpm());
+        message.setAccuracy(result.getAccuracy());
+        send(room, message);
+    }
+
     private void sendPlayers(Room room) {
         GameMessage message = new GameMessage();
         message.setType("PLAYERS");
         message.setPlayers(room.getPlayers());
         message.setLeft(room.getLeftPlayers());
+        message.setBots(room.getBotNames());
         message.setHost(room.getHost());
         send(room, message);
     }

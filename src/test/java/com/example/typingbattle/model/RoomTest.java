@@ -116,6 +116,66 @@ class RoomTest {
     }
 
     @Test
+    void hostCanStartWithBot() {
+        Room room = newRoom(false);
+        room.addPlayer("A");
+        assertFalse(room.canStart("A"));
+
+        Bot bot = room.addBot("EASY");
+
+        assertEquals("🤖AI(쉬움)", bot.getName());
+        assertTrue(room.isBot(bot.getName()));
+        assertTrue(room.canStart("A"));
+    }
+
+    @Test
+    void botNamesDoNotRepeat() {
+        Room room = newRoom(false);
+        room.addPlayer("A");
+
+        assertEquals("🤖AI(보통)", room.addBot("NORMAL").getName());
+        assertEquals("🤖AI(보통)2", room.addBot("NORMAL").getName());
+        assertTrue(room.removeBot("🤖AI(보통)"));
+        assertEquals(List.of("A", "🤖AI(보통)2"), room.getPlayers());
+    }
+
+    @Test
+    void botNeverBecomesHost() {
+        Room room = newRoom(false);
+        Bot bot = room.addBot("HARD");
+        room.addPlayer("A");
+        room.addPlayer("B");
+
+        assertEquals("A", room.getHost());
+        assertFalse(room.changeHost("A", bot.getName()));
+        room.leave("A");
+        assertEquals("B", room.getHost());
+        room.leave("B");
+        assertFalse(room.hasConnectedHuman());
+    }
+
+    @Test
+    void cannotAddBotToRankedOrStartedRoom() {
+        Room ranked = new Room("1111", new Snippet("Java", "EASY", "int a = 1;"), "RANKED", true);
+        assertNull(ranked.addBot("NORMAL"));
+
+        Room room = newRoom(false);
+        room.addPlayer("A");
+        room.addPlayer("B");
+        room.start();
+        assertNull(room.addBot("NORMAL"));
+    }
+
+    @Test
+    void botProgressFollowsSpeed() {
+        Bot bot = new Bot("🤖AI(보통)", "NORMAL", 240, 95);
+
+        assertEquals(0, bot.getProgress(-1000, 100));
+        assertEquals(20, bot.getProgress(5000, 100));
+        assertEquals(100, bot.getProgress(30000, 100));
+    }
+
+    @Test
     void scoreChangeDependsOnRank() {
         assertEquals(10, RankingService.calculateChange(2, 1));
         assertEquals(-10, RankingService.calculateChange(2, 2));
