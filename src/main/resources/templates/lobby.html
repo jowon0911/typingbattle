@@ -18,13 +18,30 @@
 
     <p class="warning" th:if="${error}" th:text="${error}"></p>
 
+    <div class="card match-hero">
+        <div class="card-icon">🎲</div>
+        <h2>랜덤 매칭</h2>
+        <p class="hint">모르는 사람과 바로 대결해요. 2명 이상 모이면 자동으로 시작해요.</p>
+        <form action="/match" method="get">
+            <input type="text" name="nickname" class="nickname" placeholder="닉네임" maxlength="10" required>
+            <div class="match-buttons">
+                <button type="submit" name="mode" value="NORMAL" class="button">
+                    일반전<small>점수 변화 없이 가볍게</small>
+                </button>
+                <button type="submit" name="mode" value="RANKED" class="button button-amber">
+                    경쟁전<small>순위에 따라 점수가 오르내려요</small>
+                </button>
+            </div>
+        </form>
+    </div>
+
     <div class="lobby-grid">
         <div class="card">
             <div class="card-icon">🏠</div>
-            <h2>방 만들기</h2>
-            <p class="hint">방을 만들고 친구들에게 방 코드를 알려 주세요.</p>
+            <h2>친구 방 만들기</h2>
+            <p class="hint">방을 만들고 친구들에게 방 코드를 알려 주세요. (일반전)</p>
             <form action="/rooms" method="post">
-                <input type="text" name="nickname" placeholder="닉네임" maxlength="10" required>
+                <input type="text" name="nickname" class="nickname" placeholder="닉네임" maxlength="10" required>
                 <select name="difficulty">
                     <option value="RANDOM">난이도: 랜덤</option>
                     <option value="EASY">난이도: 쉬움</option>
@@ -40,18 +57,49 @@
             <h2>방 입장</h2>
             <p class="hint">친구에게 받은 4자리 방 코드를 입력하세요.</p>
             <form action="/rooms/join" method="get">
-                <input type="text" name="nickname" placeholder="닉네임" maxlength="10" required>
+                <input type="text" name="nickname" class="nickname" placeholder="닉네임" maxlength="10" required>
                 <input type="text" name="code" placeholder="방 코드 4자리" maxlength="4" required>
-                <button type="submit" class="button button-blue">입장하기</button>
+                <button type="submit" class="button button-ghost">입장하기</button>
             </form>
         </div>
     </div>
 
     <div class="lobby-links">
         <a href="/practice" class="button button-ghost">⌨️ 혼자 연습하기</a>
+        <a href="/ranking" class="button button-ghost">🏆 랭킹 보기</a>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">🏆 경쟁전 TOP 5</h3>
+        <p class="empty" th:if="${#lists.isEmpty(topRankings)}">아직 경쟁전 기록이 없어요. 첫 번째 주인공이 되어 보세요!</p>
+        <ol class="top-list" th:unless="${#lists.isEmpty(topRankings)}">
+            <li th:each="player, stat : ${topRankings}">
+                <span class="top-rank" th:text="${stat.count}"></span>
+                <span class="tier" th:classappend="${'tier-' + player.tierCode}" th:text="${player.tier}"></span>
+                <span class="top-name" th:text="${player.nickname}"></span>
+                <span class="top-score" th:text="${player.score} + '점'"></span>
+            </li>
+        </ol>
     </div>
 
     <p class="footer">Spring Boot · WebSocket · Render</p>
 </div>
+
+<script>
+    const nicknameInputs = document.querySelectorAll(".nickname");
+    const savedNickname = localStorage.getItem("nickname") || "";
+
+    for (let i = 0; i < nicknameInputs.length; i++) {
+        nicknameInputs[i].value = savedNickname;
+        nicknameInputs[i].addEventListener("input", function () {
+            localStorage.setItem("nickname", this.value);
+            for (let j = 0; j < nicknameInputs.length; j++) {
+                if (nicknameInputs[j] !== this) {
+                    nicknameInputs[j].value = this.value;
+                }
+            }
+        });
+    }
+</script>
 </body>
 </html>

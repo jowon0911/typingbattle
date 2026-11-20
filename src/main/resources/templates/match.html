@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>매칭 중 - 코드 타자 배틀</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body th:data-nickname="${nickname}" th:data-mode="${mode}">
+<div class="container narrow">
+    <div class="card match-card">
+        <div id="spinner" class="spinner"></div>
+        <p class="mode-badge" th:classappend="${mode == 'RANKED'} ? 'mode-ranked'" th:text="${modeLabel}"></p>
+        <h1 id="match-title">상대를 찾는 중이에요</h1>
+        <p class="hint">
+            <b th:text="${nickname}"></b>님 · 대기 중 <b id="waiting">-</b>명 · <span id="wait-time">0</span>초
+        </p>
+        <p class="hint">2명 이상 모이면 잠시 뒤 자동으로 시작하고, 4명이 모이면 바로 시작해요.</p>
+        <p id="match-error" class="warning" hidden></p>
+        <a href="/" class="button button-ghost">매칭 취소</a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.2.1/bundles/stomp.umd.min.js"></script>
+<script>
+    const myNickname = document.body.dataset.nickname;
+    const mode = document.body.dataset.mode;
+    const ticket = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const waitStart = Date.now();
+    let matched = false;
+
+    const waitTimer = setInterval(function () {
+        document.getElementById("wait-time").textContent = Math.floor((Date.now() - waitStart) / 1000);
+    }, 1000);
+
+    const client = new StompJs.Client({
+        brokerURL: (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws",
+        reconnectDelay: 0
+    });
+
+    client.onConnect = function () {
+        client.subscribe("/topic/match/" + ticket, function (message) {
+            const data = JSON.parse(message.body);
+            if (data.type === "MATCHED") {
+                matched = true;
+                document.getElementById("match-title").textContent = "상대를 찾았어요! 곧 이동해요";
+                location.href = "/rooms/" + data.roomCode + "?nickname=" + encodeURIComponent(myNickname);
+            }
+            if (data.type === "DUPLICATE") {
+                showError("같은 닉네임이 이미 매칭을 기다리고 있어요. 다른 닉네임으로 다시 시도해 주세요.");
+            }
+            if (data.type === "INVALID") {
+                showError("닉네임은 1~10글자로 입력해 주세요.");
+            }
+        });
+
+        client.subscribe("/topic/match/waiting/" + mode, function (message) {
+            const data = JSON.parse(message.body);
+            document.getElementById("waiting").textContent = data.waiting;
+        });
+
+        client.publish({
+            destination: "/app/match/join",
+            body: JSON.stringify({ nickname: myNickname, mode: mode, ticket: ticket })
+        });
+    };
+
+    client.onWebSocketClose = function () {
+        if (!matched) {
+            showError("서버와 연결이 끊겼어요. 로비로 돌아가 다시 시도해 주세요.");
+        }
+    };
+
+    client.activate();
+
+    function showError(text) {
+        clearInterval(waitTimer);
+        document.getElementById("spinner").classList.add("stop");
+        document.getElementById("match-title").textContent = "매칭을 할 수 없어요";
+        document.getElementById("match-error").textContent = text;
+        document.getElementById("match-error").hidden = false;
+    }
+</script>
+</body>
+</html>

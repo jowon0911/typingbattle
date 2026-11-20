@@ -7,11 +7,20 @@ public class GameMessage {
     private String type;
     private String nickname;
     private List<String> players;
+    private List<String> left;
+    private String host;
+    private String target;
+    private String mode;
+    private String roomCode;
+    private String ticket;
+    private String text;
+    private int waiting;
     private int progress;
     private int rank;
     private long elapsedMs;
     private int cpm;
     private int accuracy;
+    private List<PlayerResult> results;
 
     public String getType() {
         return type;
@@ -35,6 +44,70 @@ public class GameMessage {
 
     public void setPlayers(List<String> players) {
         this.players = players;
+    }
+
+    public List<String> getLeft() {
+        return left;
+    }
+
+    public void setLeft(List<String> left) {
+        this.left = left;
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public String getTarget() {
+        return target;
+    }
+
+    public void setTarget(String target) {
+        this.target = target;
+    }
+
+    public String getMode() {
+        return mode;
+    }
+
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
+
+    public String getRoomCode() {
+        return roomCode;
+    }
+
+    public void setRoomCode(String roomCode) {
+        this.roomCode = roomCode;
+    }
+
+    public String getTicket() {
+        return ticket;
+    }
+
+    public void setTicket(String ticket) {
+        this.ticket = ticket;
+    }
+
+    public String getText() {
+        return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
+    }
+
+    public int getWaiting() {
+        return waiting;
+    }
+
+    public void setWaiting(int waiting) {
+        this.waiting = waiting;
     }
 
     public int getProgress() {
@@ -75,5 +148,13 @@ public class GameMessage {
 
     public void setAccuracy(int accuracy) {
         this.accuracy = accuracy;
+    }
+
+    public List<PlayerResult> getResults() {
+        return results;
+    }
+
+    public void setResults(List<PlayerResult> results) {
+        this.results = results;
     }
 }

@@ -20,6 +20,15 @@ public class Snippet {
     @Column(length = 2000)
     private String content;
 
+    protected Snippet() {
+    }
+
+    public Snippet(String language, String difficulty, String content) {
+        this.language = language;
+        this.difficulty = difficulty;
+        this.content = content;
+    }
+
     public Long getId() {
         return id;
     }

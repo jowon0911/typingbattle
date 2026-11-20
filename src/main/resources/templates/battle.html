@@ -8,12 +8,14 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
     <link rel="stylesheet" href="/css/style.css">
 </head>
-<body th:data-room="${room.code}" th:data-nickname="${nickname}" th:data-max="${maxPlayers}">
+<body th:data-room="${room.code}" th:data-nickname="${nickname}" th:data-mode="${room.mode}"
+      th:data-matched="${room.matched}" th:data-ranked="${room.ranked}" th:data-limit="${timeLimitSec}">
 <div class="container">
     <div class="page-header">
         <div>
-            <p class="label">방 코드</p>
+            <p class="label" th:text="${room.matched} ? '매칭 방' : '방 코드'"></p>
             <div class="room-code" th:text="${room.code}"></div>
+            <p class="mode-badge" th:classappend="${room.ranked} ? 'mode-ranked'" th:text="${room.modeLabel}"></p>
         </div>
         <p id="status" class="status">서버에 연결하는 중...</p>
     </div>
@@ -23,14 +25,16 @@
         <div id="players"></div>
         <div id="start-area" class="start-area" hidden>
             <button id="start-button" class="button" disabled>게임 시작</button>
-            <p class="hint">2명 이상 모이면 시작할 수 있어요.</p>
+            <p class="hint">2명 이상 모이면 시작할 수 있어요. 다른 사람 옆의 [방장 넘기기]로 방장을 바꿀 수 있어요.</p>
         </div>
+        <ul id="notices" class="notice-list" hidden></ul>
     </div>
 
     <div class="stats">
         <div class="stat"><span>시간</span><b id="time">0.0초</b></div>
         <div class="stat"><span>타수</span><b id="cpm">0</b></div>
         <div class="stat"><span>정확도</span><b id="accuracy">100%</b></div>
+        <div class="stat"><span>남은 시간</span><b id="remain">-</b></div>
     </div>
 
     <p id="ime-warning" class="warning" hidden>한글 입력 상태예요. 한/영 키를 눌러 영어로 바꿔 주세요.</p>
@@ -48,14 +52,17 @@
 
     <div id="result" class="result" hidden>
         <h2 id="result-title">결과</h2>
-        <table class="result-table">
+        <p id="my-score" class="my-score" hidden></p>
+        <table id="result-table" class="result-table">
             <thead>
-            <tr><th>순위</th><th>닉네임</th><th>걸린 시간</th><th>타수</th><th>정확도</th></tr>
+            <tr><th>순위</th><th>닉네임</th><th>걸린 시간</th><th>타수</th><th>정확도</th><th id="score-head" hidden>점수</th></tr>
             </thead>
             <tbody id="result-rows"></tbody>
         </table>
         <div class="result-buttons">
-            <a href="/" class="button">로비로 돌아가기</a>
+            <a id="rematch-button" class="button" hidden>다시 매칭하기</a>
+            <a href="/ranking" class="button button-ghost">🏆 랭킹 보기</a>
+            <a href="/" class="button button-ghost">로비로 돌아가기</a>
         </div>
     </div>
 
@@ -67,32 +74,57 @@
 <script>
     const roomCode = document.body.dataset.room;
     const myNickname = document.body.dataset.nickname;
+    const mode = document.body.dataset.mode;
+    const matched = document.body.dataset.matched === "true";
+    const ranked = document.body.dataset.ranked === "true";
+    const timeLimitSec = Number(document.body.dataset.limit);
 
     let rows = {};
+    let progressMap = {};
+    let rankMap = {};
+    let lastPlayers = null;
     let lastSentProgress = -1;
     let gameStarted = false;
+    let gameEnded = false;
+    let limitEndTime = 0;
 
     canType = false;
     setupCode(document.getElementById("code"));
+    document.getElementById("remain").textContent = formatRemain(timeLimitSec);
 
     const client = new StompJs.Client({
-        brokerURL: (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws"
+        brokerURL: (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws",
+        reconnectDelay: 0
     });
 
     client.onConnect = function () {
         client.subscribe("/topic/rooms/" + roomCode, function (message) {
             const data = JSON.parse(message.body);
             if (data.type === "PLAYERS") {
-                showPlayers(data.players);
+                lastPlayers = data;
+                showPlayers(data);
             }
             if (data.type === "COUNTDOWN") {
                 startCountdown();
             }
             if (data.type === "PROGRESS" && data.nickname !== myNickname) {
-                setPlayerProgress(data.nickname, data.progress);
+                progressMap[data.nickname] = data.progress;
+                setPlayerProgress(data.nickname);
             }
             if (data.type === "FINISH") {
                 showFinish(data);
+            }
+            if (data.type === "NOTICE") {
+                addNotice(data.text);
+            }
+            if (data.type === "END") {
+                showEnd(data);
+            }
+            if (data.type === "CANCELED") {
+                showMessageBox("매칭이 취소됐어요", "상대가 들어오지 않아 매칭이 취소됐어요.");
+            }
+            if (data.type === "REJECTED" && data.nickname === myNickname) {
+                showMessageBox("방에 들어갈 수 없어요", "이미 시작했거나 꽉 찬 방이에요.");
             }
         });
 
@@ -102,29 +134,44 @@
         });
     };
 
+    client.onWebSocketClose = function () {
+        if (!gameEnded) {
+            canType = false;
+            setStatus("서버와 연결이 끊겼어요. 로비로 돌아가 다시 들어와 주세요.");
+        }
+    };
+
     client.activate();
 
     document.getElementById("start-button").addEventListener("click", function () {
         client.publish({
             destination: "/app/rooms/" + roomCode + "/start",
-            body: JSON.stringify({ nickname: myNickname })
+            body: JSON.stringify({})
         });
     });
 
-    function showPlayers(players) {
+    function showPlayers(data) {
+        const players = data.players;
+        const left = data.left || [];
+        const isHost = data.host === myNickname;
         const box = document.getElementById("players");
         box.innerHTML = "";
         rows = {};
 
         for (let i = 0; i < players.length; i++) {
             const name = players[i];
+            const isLeft = left.includes(name);
 
             const row = document.createElement("div");
             row.className = "player-row";
+            if (isLeft) {
+                row.classList.add("left");
+            }
 
             const label = document.createElement("span");
+            label.className = "player-name";
             label.textContent = name;
-            if (i === 0) {
+            if (!matched && name === data.host) {
                 label.textContent = "👑 " + label.textContent;
             }
             if (name === myNickname) {
@@ -141,41 +188,71 @@
             bar.appendChild(fill);
 
             const percent = document.createElement("span");
-            percent.textContent = "0%";
+            percent.className = "player-percent";
 
             row.appendChild(label);
             row.appendChild(bar);
             row.appendChild(percent);
-            box.appendChild(row);
 
-            rows[name] = { fill: fill, percent: percent };
+            if (!matched && !gameStarted && isHost && name !== myNickname) {
+                const hostButton = document.createElement("button");
+                hostButton.className = "button button-ghost button-small";
+                hostButton.textContent = "방장 넘기기";
+                hostButton.addEventListener("click", function () {
+                    client.publish({
+                        destination: "/app/rooms/" + roomCode + "/host",
+                        body: JSON.stringify({ target: name })
+                    });
+                });
+                row.appendChild(hostButton);
+            }
+
+            box.appendChild(row);
+            rows[name] = { fill: fill, percent: percent, left: isLeft };
+            setPlayerProgress(name);
         }
 
-        document.getElementById("player-count").textContent = players.length;
+        document.getElementById("player-count").textContent = players.length - left.length;
 
         if (gameStarted) {
             return;
         }
 
-        const isHost = players[0] === myNickname;
+        if (matched) {
+            document.getElementById("start-area").hidden = true;
+            setStatus("모두 들어오면 자동으로 시작해요. (" + players.length + "명 입장)");
+            return;
+        }
+
         document.getElementById("start-area").hidden = !isHost;
         document.getElementById("start-button").disabled = players.length < 2;
 
-        let status;
         if (players.length < 2) {
-            status = "친구를 기다리는 중이에요. 방 코드를 알려 주세요!";
+            setStatus("친구를 기다리는 중이에요. 방 코드를 알려 주세요!");
         } else if (isHost) {
-            status = "모두 모였으면 [게임 시작]을 눌러 주세요!";
+            setStatus("모두 모였으면 [게임 시작]을 눌러 주세요!");
         } else {
-            status = players[0] + "님(방장)이 시작하기를 기다리는 중이에요.";
+            setStatus(data.host + "님(방장)이 시작하기를 기다리는 중이에요.");
         }
-        document.getElementById("status").textContent = status;
     }
 
-    function setPlayerProgress(name, progress) {
+    function setPlayerProgress(name) {
         const row = rows[name];
-        if (row) {
-            row.fill.style.width = progress + "%";
+        if (!row) {
+            return;
+        }
+
+        let progress = progressMap[name] || 0;
+        if (rankMap[name]) {
+            progress = 100;
+        }
+        row.fill.style.width = progress + "%";
+
+        if (row.left) {
+            row.percent.textContent = "연결 끊김";
+        } else if (rankMap[name]) {
+            row.percent.textContent = rankMap[name] + "위";
+        } else {
             row.percent.textContent = progress + "%";
         }
     }
@@ -183,6 +260,10 @@
     function startCountdown() {
         gameStarted = true;
         document.getElementById("start-area").hidden = true;
+        if (lastPlayers) {
+            showPlayers(lastPlayers);
+        }
+        limitEndTime = Date.now() + 3000 + timeLimitSec * 1000;
 
         const countdown = document.getElementById("countdown");
         let count = 3;
@@ -196,8 +277,11 @@
             } else {
                 clearInterval(countdownTimer);
                 countdown.hidden = true;
+                if (gameEnded) {
+                    return;
+                }
                 document.getElementById("code").classList.remove("blur");
-                document.getElementById("status").textContent = "시작! 코드를 입력하세요.";
+                setStatus("시작! 코드를 입력하세요. (제한 시간 " + formatRemain(timeLimitSec) + ")");
                 canType = true;
                 startTime = Date.now();
             }
@@ -205,7 +289,12 @@
     }
 
     function showFinish(data) {
-        const tr = document.createElement("tr");
+        rankMap[data.nickname] = data.rank;
+        setPlayerProgress(data.nickname);
+        if (gameEnded) {
+            return;
+        }
+
         const values = [
             data.rank + "위",
             data.nickname,
@@ -213,43 +302,161 @@
             data.cpm,
             data.accuracy + "%"
         ];
-        for (let i = 0; i < values.length; i++) {
-            const td = document.createElement("td");
-            td.textContent = values[i];
-            tr.appendChild(td);
-        }
-        document.getElementById("result-rows").appendChild(tr);
+        addResultRow(values, data.rank === 1, data.nickname === myNickname, null);
         document.getElementById("result").hidden = false;
 
         if (data.rank === 1) {
             let title;
             if (data.nickname === myNickname) {
-                title = "승리! 가장 먼저 완성했어요.";
+                title = "🎉 승리! 가장 먼저 완성했어요.";
             } else {
                 title = data.nickname + "님이 먼저 완성했어요!";
             }
             document.getElementById("result-title").textContent = title;
-            document.getElementById("status").textContent = title;
-        } else if (data.nickname === myNickname) {
-            document.getElementById("status").textContent = data.rank + "위로 완주했어요!";
+            setStatus(title);
+        }
+        if (data.nickname === myNickname) {
+            setStatus(data.rank + "위로 완주했어요! 다른 사람을 기다리는 중이에요.");
+        }
+    }
+
+    function showEnd(data) {
+        gameEnded = true;
+        canType = false;
+        if (startTime !== 0 && endTime === 0) {
+            endTime = Date.now();
         }
 
-        if (rows[data.nickname]) {
-            rows[data.nickname].percent.textContent = data.rank + "위";
+        document.getElementById("result-rows").innerHTML = "";
+        document.getElementById("score-head").hidden = !ranked;
+
+        let winner = null;
+        let mine = null;
+        for (let i = 0; i < data.results.length; i++) {
+            const result = data.results[i];
+            if (result.finished && result.rank === 1) {
+                winner = result.nickname;
+            }
+            if (result.nickname === myNickname) {
+                mine = result;
+            }
+
+            let rankText = result.rank + "위";
+            if (!result.finished) {
+                rankText = result.left ? "탈주" : "미완주";
+            }
+            const values = [
+                rankText,
+                result.nickname,
+                result.finished ? (result.elapsedMs / 1000).toFixed(1) + "초" : "-",
+                result.finished ? result.cpm : "-",
+                result.finished ? result.accuracy + "%" : "-"
+            ];
+            addResultRow(values, result.finished && result.rank === 1,
+                result.nickname === myNickname, ranked ? result : null);
         }
+
+        let title;
+        if (winner === myNickname) {
+            title = "🎉 승리! 가장 먼저 완성했어요.";
+        } else if (winner) {
+            title = winner + "님이 1위를 했어요!";
+        } else {
+            title = "아무도 완주하지 못했어요.";
+        }
+        document.getElementById("result-title").textContent = title;
+        setStatus("게임이 끝났어요. " + title);
+
+        if (ranked && mine) {
+            const myScore = document.getElementById("my-score");
+            myScore.textContent = "내 점수 " + mine.score + "점 (" + formatChange(mine.scoreChange) + ")";
+            myScore.className = "my-score " + (mine.scoreChange >= 0 ? "score-up" : "score-down");
+            myScore.hidden = false;
+        }
+
+        showRematchButton();
+        document.getElementById("result").hidden = false;
+        document.getElementById("result").scrollIntoView({ behavior: "smooth" });
+    }
+
+    function addResultRow(values, isWinner, isMe, scoreResult) {
+        const tr = document.createElement("tr");
+        if (isWinner) {
+            tr.classList.add("winner");
+        }
+        if (isMe) {
+            tr.classList.add("me");
+        }
+        for (let i = 0; i < values.length; i++) {
+            const td = document.createElement("td");
+            td.textContent = values[i];
+            tr.appendChild(td);
+        }
+        if (scoreResult) {
+            const td = document.createElement("td");
+            td.textContent = formatChange(scoreResult.scoreChange) + " (" + scoreResult.score + ")";
+            td.className = scoreResult.scoreChange >= 0 ? "score-up" : "score-down";
+            tr.appendChild(td);
+        }
+        document.getElementById("result-rows").appendChild(tr);
+    }
+
+    function showMessageBox(title, text) {
+        gameEnded = true;
+        canType = false;
+        document.getElementById("result-title").textContent = title;
+        document.getElementById("result-table").hidden = true;
+        setStatus(text);
+        showRematchButton();
+        document.getElementById("result").hidden = false;
+    }
+
+    function showRematchButton() {
+        if (!matched) {
+            return;
+        }
+        const button = document.getElementById("rematch-button");
+        button.href = "/match?mode=" + mode + "&nickname=" + encodeURIComponent(myNickname);
+        button.hidden = false;
+    }
+
+    function addNotice(text) {
+        const list = document.getElementById("notices");
+        const item = document.createElement("li");
+        item.textContent = text;
+        list.prepend(item);
+        while (list.children.length > 5) {
+            list.removeChild(list.lastChild);
+        }
+        list.hidden = false;
+    }
+
+    function setStatus(text) {
+        document.getElementById("status").textContent = text;
+    }
+
+    function formatChange(change) {
+        return (change > 0 ? "+" : "") + change + "점";
+    }
+
+    function formatRemain(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const rest = seconds % 60;
+        return minutes + ":" + String(rest).padStart(2, "0");
     }
 
     function updateScreen() {
         document.getElementById("time").textContent = (getElapsedMs() / 1000).toFixed(1) + "초";
         document.getElementById("cpm").textContent = getCpm();
         document.getElementById("accuracy").textContent = getAccuracy() + "%";
-        setPlayerProgress(myNickname, getProgress());
+        progressMap[myNickname] = getProgress();
+        setPlayerProgress(myNickname);
 
         if (getProgress() !== lastSentProgress) {
             lastSentProgress = getProgress();
             client.publish({
                 destination: "/app/rooms/" + roomCode + "/progress",
-                body: JSON.stringify({ nickname: myNickname, progress: lastSentProgress })
+                body: JSON.stringify({ progress: lastSentProgress })
             });
         }
     }
@@ -258,7 +465,7 @@
         updateScreen();
         client.publish({
             destination: "/app/rooms/" + roomCode + "/finish",
-            body: JSON.stringify({ nickname: myNickname, cpm: getCpm(), accuracy: getAccuracy() })
+            body: JSON.stringify({ cpm: getCpm(), accuracy: getAccuracy() })
         });
     }
 
@@ -269,6 +476,10 @@
     setInterval(function () {
         if (startTime !== 0 && endTime === 0) {
             updateScreen();
+        }
+        if (gameStarted && !gameEnded) {
+            const remain = Math.max(0, Math.ceil((limitEndTime - Date.now()) / 1000));
+            document.getElementById("remain").textContent = formatRemain(Math.min(remain, timeLimitSec));
         }
     }, 100);
 </script>
